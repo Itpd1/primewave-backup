@@ -1,0 +1,52 @@
+name: Backup diário - banco e registros fiscais
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # todo dia às 06:17 UTC (03:17 em Brasília)
+  workflow_dispatch: {} # permite rodar na mão: aba Actions > este backup > Run workflow
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-db
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      AGE_PUBLIC_KEY: ${{ secrets.AGE_PUBLIC_KEY }}
+      BACKUP_R2_ACCOUNT_ID: ${{ secrets.BACKUP_R2_ACCOUNT_ID }}
+      BACKUP_R2_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+      BACKUP_R2_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+      BACKUP_R2_DB_BUCKET: primewave-backup-db
+      HC_URL: ${{ secrets.HC_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conferir configuração
+        run: bash scripts/preflight.sh db
+
+      - name: Avisar início
+        run: bash scripts/ping.sh start
+
+      - name: Instalar ferramentas
+        run: bash scripts/install-tools.sh db
+
+      - name: Backup do banco
+        run: bash scripts/db-backup.sh
+
+      # Roda mesmo que o passo do banco falhe: uma falha não esconde a outra.
+      - name: Registros fiscais (cofre de 7 anos)
+        if: ${{ !cancelled() }}
+        run: bash scripts/fiscal-backup.sh
+
+      - name: Avisar sucesso
+        run: bash scripts/ping.sh success
+
+      - name: Avisar falha
+        if: ${{ failure() }}
+        run: bash scripts/ping.sh fail

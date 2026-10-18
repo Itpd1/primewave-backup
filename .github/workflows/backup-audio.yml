@@ -1,0 +1,56 @@
+name: Backup diário - áudios de pedidos pagos
+
+on:
+  schedule:
+    - cron: "43 7 * * *" # todo dia às 07:43 UTC (04:43 em Brasília)
+  workflow_dispatch: # permite rodar na mão: aba Actions > este backup > Run workflow
+    inputs:
+      allow_mass_trash:
+        description: "Permitir exclusão em massa (só se o alerta de 'muitos arquivos' for esperado)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-audio
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350 # a primeira cópia pode ser grande; as seguintes levam poucos minutos
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PRIMARY_R2_ACCOUNT_ID: ${{ secrets.PRIMARY_R2_ACCOUNT_ID }}
+      PRIMARY_R2_ACCESS_KEY_ID: ${{ secrets.PRIMARY_R2_ACCESS_KEY_ID }}
+      PRIMARY_R2_SECRET_ACCESS_KEY: ${{ secrets.PRIMARY_R2_SECRET_ACCESS_KEY }}
+      PRIMARY_R2_AUDIO_BUCKET: primewave-audio # nome do bucket de áudio do site (R2_AUDIO_BUCKET_NAME)
+      BACKUP_R2_ACCOUNT_ID: ${{ secrets.BACKUP_R2_ACCOUNT_ID }}
+      BACKUP_R2_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+      BACKUP_R2_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+      BACKUP_R2_AUDIO_BUCKET: primewave-backup-audio
+      HC_URL: ${{ secrets.HC_AUDIO_URL }}
+      ALLOW_MASS_TRASH: ${{ inputs.allow_mass_trash && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conferir configuração
+        run: bash scripts/preflight.sh audio
+
+      - name: Avisar início
+        run: bash scripts/ping.sh start
+
+      - name: Instalar ferramentas
+        run: bash scripts/install-tools.sh audio
+
+      - name: Backup dos áudios
+        run: bash scripts/audio-backup.sh
+
+      - name: Avisar sucesso
+        run: bash scripts/ping.sh success
+
+      - name: Avisar falha
+        if: ${{ failure() }}
+        run: bash scripts/ping.sh fail

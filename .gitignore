@@ -1,0 +1,12 @@
+# Nada disto pode ir para o GitHub: segredos e backups ficam fora do repositório.
+.env
+.env.*
+*.key
+key*.txt
+*key*.txt
+*.age
+*.dump
+*.csv
+*.tar
+*.pem
+age/
