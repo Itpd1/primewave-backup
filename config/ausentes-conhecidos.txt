@@ -1,0 +1,6 @@
+# Áudios pagos que o banco lista, mas que NÃO existem no R2 do site e NÃO têm cópia no backup.
+# Use só para o que você já investigou e sabe que não há o que recuperar (ex.: pedidos de teste).
+# Um caminho por linha, exatamente como aparece no log do GitHub (sem o "- " do começo).
+# Linhas que começam com # são ignoradas.
+# O backup continua mostrando um aviso a cada execução, mas deixa de disparar o alerta de falha.
+# Qualquer outro áudio pago ausente continua disparando o alerta.

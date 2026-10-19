@@ -54,8 +54,24 @@ comm -23 "$WORK/paid.txt" "$WORK/primary.txt" > "$WORK/missing.txt"   # pagos qu
 comm -23 "$WORK/present.txt" "$WORK/live.txt" > "$WORK/new.txt"       # pagos ainda sem cópia
 comm -13 "$WORK/paid.txt" "$WORK/live.txt" > "$WORK/trash.txt"        # cópias que o site já apagou
 
+# Dos pagos que sumiram do R2 principal: alguns têm cópia no backup (recuperáveis) e outros
+# não têm cópia em lugar nenhum. Estes últimos podem ser reconhecidos de propósito em
+# config/ausentes-conhecidos.txt (ex.: pedidos de teste); o aviso de falha dispara para o resto.
+comm -12 "$WORK/missing.txt" "$WORK/live.txt" > "$WORK/missing_copy.txt"
+comm -23 "$WORK/missing.txt" "$WORK/live.txt" > "$WORK/missing_nocopy.txt"
+KNOWN_FILE="${KNOWN_MISSING_FILE:-$HERE/../config/ausentes-conhecidos.txt}"
+if [ -f "$KNOWN_FILE" ]; then
+  { sed 's/\r$//; s/^[[:space:]]*//; s/[[:space:]]*$//' "$KNOWN_FILE" | grep -v '^#' | grep -v '^$' || true; } \
+    | LC_ALL=C sort -u > "$WORK/known.txt"
+else
+  : > "$WORK/known.txt"
+fi
+comm -12 "$WORK/missing_nocopy.txt" "$WORK/known.txt" > "$WORK/missing_known.txt"
+comm -23 "$WORK/missing_nocopy.txt" "$WORK/known.txt" > "$WORK/missing_lost.txt"
+
 N_PAID="$(lines "$WORK/paid.txt")"; N_PRIMARY="$(lines "$WORK/primary.txt")"; N_LIVE="$(lines "$WORK/live.txt")"
 N_MISSING="$(lines "$WORK/missing.txt")"; N_NEW="$(lines "$WORK/new.txt")"; N_TRASH="$(lines "$WORK/trash.txt")"
+N_MISS_COPY="$(lines "$WORK/missing_copy.txt")"; N_MISS_LOST="$(lines "$WORK/missing_lost.txt")"; N_MISS_KNOWN="$(lines "$WORK/missing_known.txt")"
 
 # ---------------------------------------------------------------- travas de segurança
 # Para liberar de propósito: rode o workflow na mão marcando "Permitir exclusão em massa".
@@ -74,7 +90,9 @@ fi
 # atualiza o que mudou. Só os "novos" entram na contagem do resumo.
 if [ "$(lines "$WORK/present.txt")" -gt 0 ]; then
   log "Copiando/atualizando o backup ($N_NEW novo(s))..."
-  rclone copy "$SRC" "$LIVE" --files-from-raw "$WORK/present.txt" --size-only --transfers 4 \
+  # --disable copy: as duas contas Cloudflare são diferentes e o R2 não faz cópia direta entre
+  # contas (erro 501). Assim o rclone baixa e reenvia o arquivo, sem tentar a cópia direta antes.
+  rclone copy "$SRC" "$LIVE" --files-from-raw "$WORK/present.txt" --size-only --transfers 4 --disable copy \
     "${RCLONE_FLAGS[@]}" || die "falha ao copiar arquivos para o backup"
 fi
 # Confere que TODO áudio pago presente no R2 principal tem a cópia, com o mesmo tamanho.
@@ -99,9 +117,19 @@ while IFS= read -r d; do
 done < <(rclone lsf --dirs-only "$TRASH" 2>/dev/null || true)
 
 # ---------------------------------------------------------------- resultado
-summary "áudio: pagos no banco $N_PAID | no R2 principal $N_PRIMARY (total do bucket) | novos copiados $N_NEW | movidos p/ lixeira $N_TRASH | lixeiras antigas esvaziadas $N_PURGED"
-if [ "$N_MISSING" -gt 0 ]; then
-  log "Áudios pagos que o banco lista mas o R2 principal NÃO tem (a cópia do backup foi preservada):"
-  sed 's/^/  - /' "$WORK/missing.txt"
-  die "ATENÇÃO: $N_MISSING áudio(s) pago(s) sumiram do R2 principal. As cópias estão em current/ no R2 de backup (lista no log do GitHub)"
+summary "áudio: pagos no banco $N_PAID | no R2 principal $N_PRIMARY (total do bucket) | novos copiados $N_NEW | movidos p/ lixeira $N_TRASH | lixeiras antigas esvaziadas $N_PURGED | ausentes do R2 principal $N_MISSING (com cópia no backup $N_MISS_COPY, sem cópia $((N_MISS_LOST + N_MISS_KNOWN)), destes reconhecidos $N_MISS_KNOWN)"
+if [ "$N_MISS_KNOWN" -gt 0 ]; then
+  warn "$N_MISS_KNOWN áudio(s) pago(s) ausentes do R2 principal e sem cópia, reconhecidos em config/ausentes-conhecidos.txt:"
+  sed 's/^/  - /' "$WORK/missing_known.txt" >&2
+fi
+if [ "$N_MISS_COPY" -gt 0 ]; then
+  log "Áudios pagos que o banco lista, o R2 principal NÃO tem e o backup TEM (restaure a partir de current/):"
+  sed 's/^/  - /' "$WORK/missing_copy.txt"
+fi
+if [ "$N_MISS_LOST" -gt 0 ]; then
+  log "Áudios pagos que o banco lista e que NÃO existem no R2 principal NEM no backup (perdidos):"
+  sed 's/^/  - /' "$WORK/missing_lost.txt"
+fi
+if [ $((N_MISS_COPY + N_MISS_LOST)) -gt 0 ]; then
+  die "ATENÇÃO: $((N_MISS_COPY + N_MISS_LOST)) áudio(s) pago(s) não estão no R2 principal ($N_MISS_COPY com cópia em current/ no backup, $N_MISS_LOST sem cópia em lugar nenhum). Lista no log do GitHub"
 fi

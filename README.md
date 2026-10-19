@@ -101,7 +101,7 @@ Baixe um arquivo `daily/db-AAAA-MM-DD.dump.age` (Cloudflare > R2 de backup > buc
 | `faltam estes Secrets no GitHub: ...` | Cadastre o Secret citado (passo 7). |
 | `não consegui conectar ao banco` | Confira `SUPABASE_DB_URL`: Session pooler, usuário `backup_reader.XXXX`, senha. |
 | `teste de restauração ... não bate` | O arquivo do dia foi guardado, mas a restauração de teste divergiu. Abra o log no GitHub e me envie as linhas "tabela ...". |
-| `ATENÇÃO: N áudio(s) pago(s) sumiram do R2 principal` | Um áudio que o banco ainda lista não existe mais no R2 do site. A cópia está em `current/` no backup: restaure (veja `RESTAURAR.md`). A lista está no log. |
+| `ATENÇÃO: N áudio(s) pago(s) não estão no R2 principal (X com cópia ..., Y sem cópia ...)` | Um áudio que o banco ainda lista não existe mais no R2 do site. O log do GitHub separa em duas listas. **Com cópia:** restaure a partir de `current/` no backup (veja `RESTAURAR.md`). **Sem cópia em lugar nenhum:** investigue o pedido; se for algo sem o que recuperar (pedido de teste, por exemplo), escreva o caminho em `config/ausentes-conhecidos.txt` para o alerta parar de disparar por ele. |
 | `... deixariam de constar no banco: nada foi movido` | Muitos arquivos sumiram do banco de uma vez. Se foi esperado (lote de exclusões), rode o workflow na mão marcando **Permitir exclusão em massa**. Se não foi, **não marque**: investigue primeiro. |
 | `o banco devolveu 0 áudios pagos mas o backup tem N` | Provável erro de conexão ou de permissão. Nada foi alterado. |
 | Healthchecks: "não rodou" | O GitHub não executou no horário. Veja a aba Actions (workflow desativado? repositório inativo? limite de minutos?) e rode na mão. |
