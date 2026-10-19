@@ -4,3 +4,10 @@
 # Linhas que começam com # são ignoradas.
 # O backup continua mostrando um aviso a cada execução, mas deixa de disparar o alerta de falha.
 # Qualquer outro áudio pago ausente continua disparando o alerta.
+# Pedidos de teste confirmados pelo dono em 2026-10-18 (arquivo nunca enviado ou apagado)
+PW-1036/08ae36fe-8161-429e-b8a6-a9229344f000/original.mp3
+PW-1039/6b58fa10-7311-412b-aabf-482229d2b2cb/original.mp3
+PW-1041/45e625cd-99ae-4470-a477-8b148d094fe1/original.mp3
+PW-1042/11c18c8d-95e6-4e0e-9847-b3bbdd7bc138/original.mp3
+PW-1043/39f7a662-1f9c-4f34-a6da-38eaef38607d/original.wav
+PW-1043/48fec59e-1aea-4943-9cdc-8a0164223851/original.mp3
